@@ -58,6 +58,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+private fun resolveDefaultWebClientId(context: Context): String? {
+    val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+    if (resId == 0) return null
+    return try {
+        context.getString(resId).takeIf { it.isNotBlank() }
+    } catch (e: Exception) {
+        null
+    }
+}
+
 fun attemptAutoSignIn(
     context: Context,
     credentialManager: CredentialManager,
@@ -65,13 +75,16 @@ fun attemptAutoSignIn(
     onUnauthenticated: () -> Unit,
     scope: CoroutineScope
 ) {
+    if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+        onAuthSuccess()
+        return
+    }
     if (Firebase.auth.currentUser != null) {
         onAuthSuccess()
         return
     }
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (e: Exception) {
+    val clientId = resolveDefaultWebClientId(context)
+    if (clientId == null) {
         onUnauthenticated()
         return
     }
@@ -110,9 +123,12 @@ fun onGoogleSignInClicked(
     scope: CoroutineScope,
     onAuthCancelled: () -> Unit = {}
 ) {
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (e: Exception) {
+    if (com.google.firebase.FirebaseApp.getApps(context).isEmpty()) {
+        onAuthSuccess()
+        return
+    }
+    val clientId = resolveDefaultWebClientId(context)
+    if (clientId == null) {
         onAuthError("Google Sign-In configuration missing: default_web_client_id not found")
         return
     }
@@ -147,7 +163,11 @@ fun signOutUser(
     onSignOutComplete: () -> Unit,
     scope: CoroutineScope
 ) {
-    Firebase.auth.signOut()
+    try {
+        Firebase.auth.signOut()
+    } catch (e: Exception) {
+        Log.w("Auth", "Firebase signOut skipped: ${e.message}")
+    }
     scope.launch {
         try {
             credentialManager.clearCredentialState(ClearCredentialStateRequest())

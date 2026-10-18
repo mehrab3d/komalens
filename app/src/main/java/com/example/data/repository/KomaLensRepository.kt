@@ -5,6 +5,7 @@ import com.example.R
 import com.example.data.model.DetectedBubble
 import com.example.data.model.GlossaryEntry
 import com.example.data.model.TranslationHistoryItem
+import com.google.firebase.FirebaseApp
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
@@ -22,28 +23,37 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class KomaLensRepository(
-    private val db: FirebaseFirestore,
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val db: FirebaseFirestore?,
+    private val auth: FirebaseAuth? = try { FirebaseAuth.getInstance() } catch (_: Exception) { null }
 ) {
     constructor(context: Context) : this(
-        FirebaseFirestore.getInstance(
-            context.applicationContext.getString(R.string.firestore_database_id)
-        )
+        db = if (FirebaseApp.getApps(context).isNotEmpty()) {
+            FirebaseFirestore.getInstance(
+                context.applicationContext.getString(R.string.firestore_database_id)
+            )
+        } else {
+            null
+        }
     )
 
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun requireUserId(): String {
-        return auth.currentUser?.uid
+        return auth?.currentUser?.uid
             ?: throw IllegalStateException("User must be signed in with Google before accessing Firestore.")
     }
 
     // --- Glossary Operations ---
 
     fun observeGlossary(userId: String = requireUserId()): Flow<List<GlossaryEntry>> = flow {
+        val firestore = db
+        if (firestore == null) {
+            emit(emptyList())
+            return@flow
+        }
         val path = "users/$userId/glossary"
         emitAll(
-            db.collection("users").document(userId).collection("glossary")
+            firestore.collection("users").document(userId).collection("glossary")
                 .whereEqualTo("userId", userId)
                 .snapshots()
                 .map { snapshot ->
@@ -62,9 +72,10 @@ class KomaLensRepository(
     }
 
     suspend fun getGlossaryEntries(userId: String = requireUserId()): Result<List<GlossaryEntry>> {
+        val firestore = db ?: return Result.success(emptyList())
         val path = "users/$userId/glossary"
         return try {
-            val snapshot = db.collection("users").document(userId).collection("glossary")
+            val snapshot = firestore.collection("users").document(userId).collection("glossary")
                 .whereEqualTo("userId", userId)
                 .get()
                 .await()
@@ -82,9 +93,10 @@ class KomaLensRepository(
     }
 
     suspend fun getGlossaryById(targetUserId: String, entryId: String): Result<GlossaryEntry?> {
+        val firestore = db ?: return Result.success(null)
         val path = "users/$targetUserId/glossary/$entryId"
         return try {
-            val doc = db.collection("users").document(targetUserId)
+            val doc = firestore.collection("users").document(targetUserId)
                 .collection("glossary").document(entryId)
                 .get()
                 .await()
@@ -103,8 +115,9 @@ class KomaLensRepository(
     }
 
     suspend fun addGlossaryEntry(entry: GlossaryEntry): Result<String> {
+        val firestore = db ?: return Result.failure(IllegalStateException("Firestore unavailable in standalone APK mode"))
         val uid = requireUserId()
-        val colRef = db.collection("users").document(uid).collection("glossary")
+        val colRef = firestore.collection("users").document(uid).collection("glossary")
         return try {
             val payload = entry.toCreateMap(uid)
             val docRef = colRef.add(payload).await()
@@ -118,9 +131,10 @@ class KomaLensRepository(
     }
 
     suspend fun updateGlossaryEntry(entry: GlossaryEntry): Result<Unit> {
+        val firestore = db ?: return Result.failure(IllegalStateException("Firestore unavailable in standalone APK mode"))
         val uid = requireUserId()
         require(entry.id.isNotBlank()) { "GlossaryEntry ID must not be blank for update" }
-        val docRef = db.collection("users").document(uid).collection("glossary").document(entry.id)
+        val docRef = firestore.collection("users").document(uid).collection("glossary").document(entry.id)
         return try {
             val updates = mutableMapOf<String, Any>(
                 "sourceTerm" to entry.sourceTerm.trim(),
@@ -142,8 +156,9 @@ class KomaLensRepository(
     }
 
     suspend fun deleteGlossaryEntry(entryId: String): Result<Unit> {
+        val firestore = db ?: return Result.failure(IllegalStateException("Firestore unavailable in standalone APK mode"))
         val uid = requireUserId()
-        val docRef = db.collection("users").document(uid).collection("glossary").document(entryId)
+        val docRef = firestore.collection("users").document(uid).collection("glossary").document(entryId)
         return try {
             docRef.delete().await()
             Result.success(Unit)
@@ -158,9 +173,14 @@ class KomaLensRepository(
     // --- Translation History Operations ---
 
     fun observeHistory(userId: String = requireUserId()): Flow<List<TranslationHistoryItem>> = flow {
+        val firestore = db
+        if (firestore == null) {
+            emit(emptyList())
+            return@flow
+        }
         val path = "users/$userId/history"
         emitAll(
-            db.collection("users").document(userId).collection("history")
+            firestore.collection("users").document(userId).collection("history")
                 .whereEqualTo("userId", userId)
                 .snapshots()
                 .map { snapshot ->
@@ -184,8 +204,9 @@ class KomaLensRepository(
         sourceType: String,
         bubbles: List<DetectedBubble>
     ): Result<String> {
+        val firestore = db ?: return Result.failure(IllegalStateException("Firestore unavailable in standalone APK mode"))
         val uid = requireUserId()
-        val colRef = db.collection("users").document(uid).collection("history")
+        val colRef = firestore.collection("users").document(uid).collection("history")
         return try {
             val rawPreview = bubbles.joinToString(" • ") { it.rawText }.take(4500)
             val translatedPreview = bubbles.joinToString(" • ") { it.activeTranslation }.take(4500)
@@ -211,8 +232,9 @@ class KomaLensRepository(
     }
 
     suspend fun deleteHistoryItem(historyId: String): Result<Unit> {
+        val firestore = db ?: return Result.failure(IllegalStateException("Firestore unavailable in standalone APK mode"))
         val uid = requireUserId()
-        val docRef = db.collection("users").document(uid).collection("history").document(historyId)
+        val docRef = firestore.collection("users").document(uid).collection("history").document(historyId)
         return try {
             docRef.delete().await()
             Result.success(Unit)

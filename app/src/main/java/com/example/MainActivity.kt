@@ -40,6 +40,7 @@ import com.example.ui.screens.OverlayControlScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.viewmodel.KomaLensViewModel
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.auth
@@ -54,7 +55,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
-                AppNavigation()
+                val context = LocalContext.current
+                val isFirebaseAvailable = remember { FirebaseApp.getApps(context).isNotEmpty() }
+                if (isFirebaseAvailable) {
+                    AppNavigation()
+                } else {
+                    KomaLensMainShell(currentUserId = "standalone_local_user", isStandaloneMode = true)
+                }
             }
         }
     }
@@ -75,14 +82,15 @@ fun AppNavigation(auth: FirebaseAuth = Firebase.auth) {
     if (user == null) {
         AuthScreen(onAuthSuccess = {})
     } else {
-        KomaLensMainShell(currentUserId = user.uid)
+        KomaLensMainShell(currentUserId = user.uid, isStandaloneMode = false)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KomaLensMainShell(
-    currentUserId: String
+    currentUserId: String,
+    isStandaloneMode: Boolean = false
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -95,8 +103,12 @@ fun KomaLensMainShell(
                 val app = checkNotNull(this[APPLICATION_KEY]) {
                     "APPLICATION_KEY missing from CreationExtras"
                 }
-                val databaseId = app.getString(R.string.firestore_database_id)
-                val db = FirebaseFirestore.getInstance(databaseId)
+                val db = if (FirebaseApp.getApps(app).isNotEmpty()) {
+                    val databaseId = app.getString(R.string.firestore_database_id)
+                    FirebaseFirestore.getInstance(databaseId)
+                } else {
+                    null
+                }
                 KomaLensViewModel(KomaLensRepository(db), currentUserId)
             }
         }
@@ -114,21 +126,23 @@ fun KomaLensMainShell(
                     )
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            signOutUser(
-                                credentialManager = credentialManager,
-                                onSignOutComplete = {},
-                                scope = scope
+                    if (!isStandaloneMode) {
+                        IconButton(
+                            onClick = {
+                                signOutUser(
+                                    credentialManager = credentialManager,
+                                    onSignOutComplete = {},
+                                    scope = scope
+                                )
+                            },
+                            modifier = Modifier.testTag("sign_out_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = stringResource(R.string.sign_out),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        modifier = Modifier.testTag("sign_out_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = stringResource(R.string.sign_out),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
