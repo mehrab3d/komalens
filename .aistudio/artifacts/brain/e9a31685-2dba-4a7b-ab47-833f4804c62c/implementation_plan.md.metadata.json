@@ -1,0 +1,6 @@
+{
+  "summary": "Comprehensive implementation plan for KomaLens, a real-time Manga, Manhwa, and Manhua screen and in-app translator powered by Google ML Kit OCR/Translate, Gemini 3.5 Flash context localization, floating overlay capture, and Firestore cloud sync for custom glossaries and reading history.",
+  "updatedAt": "2026-10-17T13:21:45.416351503Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

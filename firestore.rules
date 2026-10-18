@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidGlossaryEntry(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.sourceTerm is string && data.sourceTerm.size() >= 1 && data.sourceTerm.size() <= 200 &&
+             data.targetTerm is string && data.targetTerm.size() >= 1 && data.targetTerm.size() <= 200 &&
+             data.sourceLanguage is string && data.sourceLanguage in ['JA', 'KO', 'ZH'] &&
+             data.seriesTitle is string && data.seriesTitle.size() >= 1 && data.seriesTitle.size() <= 150 &&
+             data.category is string && data.category in ['Character', 'Skill', 'Location', 'Honorific'] &&
+             (!('notes' in data) || data.notes == null || (data.notes is string && data.notes.size() <= 500)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidHistoryItem(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.pageTitle is string && data.pageTitle.size() >= 1 && data.pageTitle.size() <= 200 &&
+             data.sourceLanguage is string && data.sourceLanguage in ['JA', 'KO', 'ZH'] &&
+             data.sourceType is string && data.sourceType in ['Reader', 'Webtoon', 'ScreenOverlay'] &&
+             data.bubbleCount is int && data.bubbleCount >= 0 && data.bubbleCount <= 500 &&
+             data.rawPreview is string && data.rawPreview.size() <= 5000 &&
+             data.translatedPreview is string && data.translatedPreview.size() <= 5000 &&
+             data.bubblesPayload is string && data.bubblesPayload.size() <= 100000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId}/glossary/{entryId} {
+      allow get: if isSignedIn() && isValidId(userId) && isValidId(entryId) && request.auth.uid == userId && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && request.auth.uid == userId && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(entryId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll(['userId', 'sourceTerm', 'targetTerm', 'sourceLanguage', 'seriesTitle', 'category', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'sourceTerm', 'targetTerm', 'sourceLanguage', 'seriesTitle', 'category', 'notes', 'createdAt', 'updatedAt']) &&
+                       isValidGlossaryEntry(incoming(), userId);
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(entryId) &&
+                       request.auth.uid == userId &&
+                       isValidGlossaryEntry(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['sourceTerm', 'targetTerm', 'sourceLanguage', 'seriesTitle', 'category', 'notes', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(userId) && isValidId(entryId) && request.auth.uid == userId && existing().userId == request.auth.uid;
+    }
+
+    match /users/{userId}/history/{historyId} {
+      allow get: if isSignedIn() && isValidId(userId) && isValidId(historyId) && request.auth.uid == userId && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && request.auth.uid == userId && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(historyId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll(['userId', 'pageTitle', 'sourceLanguage', 'sourceType', 'bubbleCount', 'rawPreview', 'translatedPreview', 'bubblesPayload', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'pageTitle', 'sourceLanguage', 'sourceType', 'bubbleCount', 'rawPreview', 'translatedPreview', 'bubblesPayload', 'createdAt', 'updatedAt']) &&
+                       isValidHistoryItem(incoming(), userId);
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(historyId) &&
+                       request.auth.uid == userId &&
+                       isValidHistoryItem(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['pageTitle', 'sourceLanguage', 'sourceType', 'bubbleCount', 'rawPreview', 'translatedPreview', 'bubblesPayload', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(userId) && isValidId(historyId) && request.auth.uid == userId && existing().userId == request.auth.uid;
+    }
+  }
+}

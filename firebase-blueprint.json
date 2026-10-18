@@ -1,0 +1,138 @@
+{
+  "entities": {
+    "GlossaryEntry": {
+      "title": "GlossaryEntry",
+      "description": "Custom character name, skill, or terminology mapping for consistent manga/manhwa/manhua translation.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID."
+        },
+        "sourceTerm": {
+          "type": "string",
+          "description": "Original Japanese, Korean, or Chinese term."
+        },
+        "targetTerm": {
+          "type": "string",
+          "description": "Preferred English translation or localization."
+        },
+        "sourceLanguage": {
+          "type": "string",
+          "enum": ["JA", "KO", "ZH"],
+          "description": "Source script language code."
+        },
+        "seriesTitle": {
+          "type": "string",
+          "description": "Manga, Manhwa, or Manhua series title."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Character", "Skill", "Location", "Honorific"],
+          "description": "Term classification."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional context or gender/pronoun notes for AI localization."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (must submit FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (must submit FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "sourceTerm",
+        "targetTerm",
+        "sourceLanguage",
+        "seriesTitle",
+        "category",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TranslationHistoryItem": {
+      "title": "TranslationHistoryItem",
+      "description": "Saved screen/page OCR detection and translation session record.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated owner UID."
+        },
+        "pageTitle": {
+          "type": "string",
+          "description": "Title of the manga/manhwa/manhua page or screen capture."
+        },
+        "sourceLanguage": {
+          "type": "string",
+          "enum": ["JA", "KO", "ZH"],
+          "description": "Source language code detected on page."
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["Reader", "Webtoon", "ScreenOverlay"],
+          "description": "Where the capture originated."
+        },
+        "bubbleCount": {
+          "type": "integer",
+          "description": "Total number of OCR speech bubbles detected."
+        },
+        "rawPreview": {
+          "type": "string",
+          "description": "Combined raw CJK text snippet from the page."
+        },
+        "translatedPreview": {
+          "type": "string",
+          "description": "Combined translated English dialogue snippet."
+        },
+        "bubblesPayload": {
+          "type": "string",
+          "description": "Serialized list of detected bubble regions, coordinates, raw text, translations, and linguistic breakdowns."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (must submit FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (must submit FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "pageTitle",
+        "sourceLanguage",
+        "sourceType",
+        "bubbleCount",
+        "rawPreview",
+        "translatedPreview",
+        "bubblesPayload",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/glossary/{entryId}": {
+      "schema": {
+        "$ref": "#/entities/GlossaryEntry"
+      },
+      "description": "Per-user custom terminology and character name glossary."
+    },
+    "/users/{userId}/history/{historyId}": {
+      "schema": {
+        "$ref": "#/entities/TranslationHistoryItem"
+      },
+      "description": "Per-user saved OCR screen detections and translated comic pages."
+    }
+  }
+}

@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">KomaLens</string>
+    <string name="app_tagline">Real-Time Manga, Manhwa &amp; Manhua Translator</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="nav_reader">Reader &amp; OCR</string>
+    <string name="nav_overlay">Screen Overlay</string>
+    <string name="nav_glossary">Glossary</string>
+    <string name="nav_history">Saved History</string>
+    <string name="action_scan_translate">Scan &amp; Translate Page</string>
+    <string name="action_save_history">Save to History</string>
+    <string name="action_pick_image">Load Local Page</string>
+    <string name="action_open_webtoon">Webtoon URL</string>
+    <string name="mode_translated">Translated</string>
+    <string name="mode_raw">Raw CJK</string>
+    <string name="mode_split">Split List</string>
+    <string name="lang_japanese">Japanese (Manga)</string>
+    <string name="lang_korean">Korean (Manhwa)</string>
+    <string name="lang_chinese">Chinese (Manhua)</string>
+    <string name="overlay_permission_title">Display Over Other Apps</string>
+    <string name="overlay_capture_title">Screen Capture Access</string>
+    <string name="glossary_add_title">Add Glossary Term</string>
+    <string name="security_prototype_notice">Security Warning: API keys included in prototype APK via BuildConfig can be extracted if decompiled. Do not share this APK publicly.</string>
+</resources>

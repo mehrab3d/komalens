@@ -1,0 +1,6 @@
+{
+  "name": "KomaLens",
+  "description": "Real-time Manga, Manhwa, and Manhua screen and in-app translator powered by Google ML Kit OCR and Gemini AI localization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
